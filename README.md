@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-BudgetBuddy is a full-stack personal budget planning and expense management platform. It aims to help students manage their income, track expenses, plan budgets, and monitor savings goals.
+BudgetBuddy is a full-stack personal budget planning and expense management platform designed to help students manage income, track expenses, plan budgets, and monitor savings goals.
 
 ## Technologies Used
 
@@ -10,27 +10,43 @@ BudgetBuddy is a full-stack personal budget planning and expense management plat
 - **Backend:** Python, Django, Django REST Framework
 - **Database:** SQLite
 - **Authentication:** JWT using SimpleJWT
-- **Development Tools:** Visual Studio Code, PowerShell, Git, GitHub
+- **Development Tools:** Visual Studio Code, PowerShell, Git, GitHub.
 
 ## Main Modules
 
 - User Authentication and Role Management
 - User Profile Management
 - Income Management
-- Expense Tracking
-- Budget Planning
+- Expense Tracking and Categorization
+- Budget Planning and Tracking
 - Savings Goal Management
+- Dashboard and Financial Analytics
 - Notifications and Reports
 
 ## Current Progress
 
+### Milestone 1 – Project Setup and Authentication
+
 - Configured the Django backend and SQLite database.
 - Created a custom user model with Student, Premium User, and Admin roles.
-- Implemented registration, JWT login, and token refresh endpoints.
+- Implemented user registration, JWT login, and token refresh endpoints.
 - Created Profile, Income, Expense, Budget, SavingsGoal, Notification, and Report models.
-- Created a React login and registration interface with a basic dashboard.
+- Created the React login and registration interface.
 - Tested protected API access using JWT authentication.
 - Registered finance models in Django Admin.
+
+### Milestone 2 – Financial Management
+
+- Implemented income management APIs.
+- Implemented expense tracking and CRUD operations.
+- Implemented budget creation, updating, deletion, and listing.
+- Added monthly budget summary functionality.
+- Implemented savings goal management.
+- Connected the React frontend with backend APIs.
+- Developed the financial dashboard with income, expenses, and balance summaries.
+- Added transaction history with search, filters, and pagination.
+- Added expense breakdown and income-versus-expense analytics.
+- Developed budget and savings goal interfaces.
 
 ## Project Structure
 
@@ -63,7 +79,7 @@ BudgetBuddy-AI-Tool/
 
 ## How to Run the Backend
 
-Open a terminal in the repository root and run these commands one by one:
+Open a terminal in the repository root and run:
 
 ```powershell
 cd backend
@@ -88,7 +104,7 @@ npm run dev
 
 Frontend URL: `http://localhost:5173/`
 
-## Authentication Endpoint
+## Authentication Endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -99,15 +115,32 @@ Frontend URL: `http://localhost:5173/`
 
 ## Database
 
-SQLite is used for local development. The database models include user profiles, income, expenses, budgets, savings goals, notifications, and reports.
+SQLite is used for local development. The database includes models for user profiles, income, expenses, budgets, savings goals, notifications, and reports.
 
 The local database file is not included in the repository.
 
 ## Development Status
 
-**Completed:** Initial project setup, custom user model, database models and migrations, JWT authentication endpoints, and the basic React interface.
+**Completed:**
+- Initial project setup and authentication.
+- Database models and migrations.
+- Income and expense management.
+- Budget planning and monthly budget summaries.
+- Savings goal management.
+- Financial dashboard and transaction history.
+- Basic financial analytics and frontend integration.
 
-**Next steps:** Implement and test the finance APIs, connect the frontend to financial data, and develop income, expense, budget, savings goal, notification, and reporting functionality.
+**Upcoming – Milestone 3:**
+- Notification system.
+- Budget alerts and overspending notifications.
+- Financial analytics APIs.
+- Monthly financial reports and report generation.
+
+**Upcoming – Milestone 4:**
+- Analytics dashboard enhancements.
+- Testing and bug fixing.
+- Application deployment.
+- Production configuration and security improvements.
 
 ## Security
 
