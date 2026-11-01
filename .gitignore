@@ -25,3 +25,18 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+
+# BudgetBuddy project-specific exclusions
+.env
+.env.*
+!.env.example
+*.sqlite3
+db.sqlite3
+.venv/
+venv/
+env/
+node_modules/
+dist/
+staticfiles/
+media/
