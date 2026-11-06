@@ -1,10 +1,12 @@
 # Import Django's path function for URL routing
 from django.urls import path
 
+
 # Import Expense and Income API views
 from .views import (
     ExpenseListCreateView,
     ExpenseDetailView,
+    FinancialAnalyticsView,
     IncomeListCreateView,
     IncomeDetailView,
     BudgetListCreateView,
@@ -12,6 +14,13 @@ from .views import (
     BudgetSummaryView,
     SavingsGoalListCreateView,
     SavingsGoalDetailView,
+    NotificationListCreateView,
+    NotificationDetailView,
+    ReportListCreateView,
+    ReportDetailView,
+    ReportPDFView,
+    ReportExcelView,
+
 )
 
 
@@ -63,5 +72,33 @@ path(
     "savings-goals/<int:pk>/",
     SavingsGoalDetailView.as_view(),
     name="savings-goal-detail",
+),
+path('notifications/', NotificationListCreateView.as_view(), name='notification-list-create'),
+path('notifications/<int:pk>/', NotificationDetailView.as_view(), name='notification-detail'),
+path(
+    "analytics/",
+    FinancialAnalyticsView.as_view(),
+    name="financial-analytics",
+),
+# Financial Report API routes
+path(
+    "reports/",
+    ReportListCreateView.as_view(),
+    name="report-list-create",
+),
+path(
+    "reports/<int:pk>/",
+    ReportDetailView.as_view(),
+    name="report-detail",
+),
+path(
+    "reports/<int:pk>/pdf/",
+    ReportPDFView.as_view(),
+    name="report-pdf",
+),
+path(
+    "reports/<int:pk>/excel/",
+    ReportExcelView.as_view(),
+    name="report-excel"
 ),
 ]

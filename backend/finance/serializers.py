@@ -2,8 +2,7 @@
 from rest_framework import serializers
 
 # Import Expense, Income, and Budget models
-from .models import Expense, Income, Budget,SavingsGoal
-
+from .models import Expense, Income, Budget, SavingsGoal, Notification, Report
 
 # Expense Serializer
 # Converts Expense model data into JSON and validates incoming expense data.
@@ -43,3 +42,24 @@ class SavingsGoalSerializer(serializers.ModelSerializer):
             "target_date",
         ]
         read_only_fields = ["id"]
+
+
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'user', 'message', 'is_read', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = [
+            "id",
+            "title",
+            "start_date",
+            "end_date",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
