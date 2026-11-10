@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import RegisterSerializer
+from .serializers import ChangePasswordSerializer, RegisterSerializer
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -140,3 +140,18 @@ class AdminUserRoleUpdateView(APIView):
             "role": target_user.role,
             "role_display": target_user.get_role_display(),
         })
+
+
+class ChangePasswordView(APIView):
+    """Let a logged-in user change their own password."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        request.user.set_password(serializer.validated_data["new_password"])
+        request.user.save(update_fields=["password"])
+        return Response({"detail": "Password changed successfully."})

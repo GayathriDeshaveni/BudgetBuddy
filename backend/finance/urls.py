@@ -20,6 +20,7 @@ from .views import (
     ReportDetailView,
     ReportPDFView,
     ReportExcelView,
+    ProfileView,
 
 )
 
@@ -101,4 +102,5 @@ path(
     ReportExcelView.as_view(),
     name="report-excel"
 ),
+    path("profile/", ProfileView.as_view(), name="profile"),
 ]

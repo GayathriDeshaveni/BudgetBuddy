@@ -22,6 +22,8 @@ class Profile(models.Model):
 
     # Default currency is Indian Rupees
     currency = models.CharField(max_length=3, default="INR")
+        # Preference: send budget alert emails (in-app alerts are always shown)
+    email_alerts = models.BooleanField(default=True)
 
     def __str__(self):
         return f"Profile: {self.user.username}"

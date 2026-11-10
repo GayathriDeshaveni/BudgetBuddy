@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     AdminUserListView,
     AdminUserRoleUpdateView,
+    ChangePasswordView,
     CurrentUserView,
     ProtectedTestView,
     RegisterView,
@@ -21,4 +22,5 @@ urlpatterns = [
         AdminUserRoleUpdateView.as_view(),
         name="admin_user_role_update",
     ),
+    path("change-password/", ChangePasswordView.as_view(), name="change_password"),
 ]

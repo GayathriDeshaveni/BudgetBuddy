@@ -42,6 +42,27 @@ function App() {
   const [incomeError, setIncomeError] = useState("");
   const [budgetError, setBudgetError] = useState("");
   const [refreshData, setRefreshData] = useState(0);
+  
+  // Profile and preferences
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileIncome, setProfileIncome] = useState("0");
+  const [profileEmailAlerts, setProfileEmailAlerts] = useState(true);
+  
+  // Role of the logged-in user (STUDENT, PREMIUM or ADMIN)
+  const [userRole, setUserRole] = useState("");
+  const canExport = userRole === "PREMIUM" || userRole === "ADMIN";
+  
+  // Change password form
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   // Budget creation form
   const [budgetCategory, setBudgetCategory] = useState("Food");
@@ -289,13 +310,54 @@ useEffect(() => {
   );
   return () => window.clearTimeout(timeoutId);
 }, [notificationToast]);
+
+  // When the session cannot be renewed, log out with a clear message.
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      handleLogout();
+      setMessage("Your session expired. Please log in again.");
+    };
+    window.addEventListener("auth-expired", handleAuthExpired);
+    return () => window.removeEventListener("auth-expired", handleAuthExpired);
+  }, []);
   // Clear status messages a few seconds after login so they don't stay on screen.
   useEffect(() => {
     if (!message || !isLoggedIn) return undefined;
     const timeoutId = window.setTimeout(() => setMessage(""), 4000);
     return () => window.clearTimeout(timeoutId);
   }, [message, isLoggedIn]);
-
+  // Fetch the user's profile
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const loadProfile = async () => {
+      setProfileLoading(true);
+      setProfileError("");
+      try {
+        const response = await api.get("profile/");
+        setProfile(response.data);
+        setProfileIncome(String(response.data.monthly_income));
+        setProfileEmailAlerts(response.data.email_alerts);
+      } catch (error) {
+        setProfileError("Unable to load your profile.");
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+    loadProfile();
+  }, [isLoggedIn]);
+    // Fetch the user's role (checked again whenever the user changes page)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const loadRole = async () => {
+      try {
+        const response = await api.get("auth/me/");
+        setUserRole(response.data.role);
+      } catch (error) {
+        setUserRole("");
+      }
+    };
+    loadRole();
+  }, [isLoggedIn, activePage]);
   // Fetch financial reports
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -316,6 +378,10 @@ useEffect(() => {
 
   // Download one report as a PDF using the authenticated API client
   const downloadPDF = async (reportId) => {
+        if (!canExport) {
+      alert("PDF export is available to Premium users only.");
+      return;
+    }
     setReportDownloading(`${reportId}-pdf`);
     try {
       const response = await api.get(`reports/${reportId}/pdf/`, { responseType: "blob" });
@@ -337,6 +403,10 @@ useEffect(() => {
 
   // Download one report as an Excel file using the authenticated API client
   const downloadExcel = async (reportId) => {
+        if (!canExport) {
+      alert("Excel export is available to Premium users only.");
+      return;
+    }
     setReportDownloading(`${reportId}-excel`);
     try {
       const response = await api.get(`reports/${reportId}/excel/`, { responseType: "blob" });
@@ -436,7 +506,69 @@ useEffect(() => {
       setReportsError("Unable to delete this report. Please try again.");
     }
   };
+  // Save the profile settings
+  const handleSaveProfile = async (event) => {
+    event.preventDefault();
+    setProfileError("");
+    setProfileSaving(true);
+    try {
+      const response = await api.patch("profile/", {
+        monthly_income: profileIncome,
+        email_alerts: profileEmailAlerts,
+      });
+      setProfile(response.data);
+      setProfileIncome(String(response.data.monthly_income));
+      setProfileEmailAlerts(response.data.email_alerts);
+      setMessage("Profile updated successfully!");
+    } catch (error) {
+      const data = error.response?.data;
+      setProfileError(
+        data
+          ? Object.entries(data)
+              .map(([field, errors]) =>
+                `${field}: ${Array.isArray(errors) ? errors.join(", ") : errors}`
+              )
+              .join(" | ")
+          : "Unable to save your profile. Please try again."
+      );
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+    // Change the logged-in user's password
+  const handleChangePassword = async (event) => {
+    event.preventDefault();
+    setPasswordError("");
 
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      await api.post("auth/change-password/", {
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowPasswords(false);
+      setShowPasswordForm(false);
+      setMessage("Password changed successfully!");
+    } catch (error) {
+      const data = error.response?.data;
+      setPasswordError(
+        data && typeof data === "object"
+          ? Object.values(data).flat().join(" ")
+          : "Unable to change your password. Please try again."
+      );
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
   // Login and registration
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -801,6 +933,7 @@ useEffect(() => {
     setNotificationToast(null);
     setNotificationPanelOpen(false);
     setReports([]);
+    setUserRole("");
     setReportDownloading(null);
     setMessage("");
     setPassword("");
@@ -1119,6 +1252,16 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
   });
 
   if (isLoggedIn) {
+      // Monthly plan: compare the profile's monthly income with this month's budgets.
+  const monthlyIncomeSetting = Number(profile?.monthly_income) || 0;
+  const totalBudgetedThisMonth = budgetSummary.reduce(
+    (sum, budget) => sum + (Number(budget.budget_limit) || 0), 0
+  );
+  const budgetedShare = monthlyIncomeSetting > 0
+    ? (totalBudgetedThisMonth / monthlyIncomeSetting) * 100
+    : 0;
+  const budgetsExceedIncome =
+    monthlyIncomeSetting > 0 && totalBudgetedThisMonth > monthlyIncomeSetting;
     return (
       <div className="app">
         <header className="navbar">
@@ -1200,6 +1343,12 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
                 </div>
               )}
             </div>
+                        <button type="button" aria-label="Open your profile"
+              title={`${profile?.username || displayName}${profile?.role ? ` (${profile.role})` : ""}`}
+              onClick={() => setActivePage("profile")}
+              style={{ width: 40, height: 40, minWidth: 40, padding: 0, borderRadius: "50%", fontSize: 14, fontWeight: 800 }}>
+              {(profile?.username || displayName || "?").slice(0, 2).toUpperCase()}
+            </button>
             <button type="button" onClick={handleLogout}>Log Out</button>
           </div>
         </header>
@@ -1251,12 +1400,13 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
               <span>◉</span> Notifications
             </button>
             <button type="button" className={`side-link ${activePage === "reports" ? "active" : ""}`} onClick={() => { setActivePage("reports"); setSidebarOpen(false); }}><span>▤</span> Reports</button>
+                        <button type="button" className={`side-link ${activePage === "profile" ? "active" : ""}`} onClick={() => { setActivePage("profile"); setSidebarOpen(false); }}><span>◈</span> Profile</button>
             <div className="sidebar-note"><strong>Small steps add up.</strong><p>Keep tracking. Keep growing.</p></div>
           </aside>
 
           <main className="dashboard">
-          <div className="page-heading" id="overview"><div><p className="eyebrow">YOUR FINANCIAL OVERVIEW</p><h1>{activePage === "dashboard" ? `${greeting}, ${displayName || "there"}!` : activePage === "transactions" ? "Transactions & History" : activePage === "budgets" ? "Your Budgets" : activePage === "savings" ? "Savings Goals" : activePage === "analytics" ? "Financial Analytics" : activePage === "notifications" ? "Notifications" : "Financial Reports"}</h1></div><span className="date-chip">{new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span></div>
-          <p className="page-subtitle">{activePage === "dashboard" ? "Here is your money overview for today." : activePage === "transactions" ? "See every rupee coming in and going out." : activePage === "budgets" ? "Plan your spending and stay within your limits." : activePage === "savings" ? "Track your progress, one step at a time." : activePage === "analytics" ? "Understand your spending, income and savings habits." : activePage === "notifications" ? "Stay updated on your budgets and savings." : "Generate, review and export your financial activity."}</p>
+          <div className="page-heading" id="overview"><div><p className="eyebrow">YOUR FINANCIAL OVERVIEW</p><h1>{activePage === "dashboard" ? `${greeting}, ${displayName || "there"}!` : activePage === "transactions" ? "Transactions & History" : activePage === "budgets" ? "Your Budgets" : activePage === "savings" ? "Savings Goals" : activePage === "analytics" ? "Financial Analytics" : activePage === "profile" ? "Your Profile" : activePage === "notifications" ? "Notifications" : "Financial Reports"}</h1></div><span className="date-chip">{new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span></div>
+          <p className="page-subtitle">{activePage === "dashboard" ? "Here is your money overview for today." : activePage === "transactions" ? "See every rupee coming in and going out." : activePage === "budgets" ? "Plan your spending and stay within your limits." : activePage === "savings" ? "Track your progress, one step at a time." : activePage === "analytics" ? "Understand your spending, income and savings habits." : activePage === "profile" ? "Manage your income and notification preferences." : activePage === "notifications" ? "Stay updated on your budgets and savings." : "Generate, review and export your financial activity."}</p>
 
           {activePage === "dashboard" && <div className="dashboard-grid">
             <div className="summary-card">
@@ -1592,6 +1742,36 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
 
           {activePage === "dashboard" && <>
             <div className="dashboard-panels">
+                          <section className="dashboard-section" style={{ gridColumn: "1 / -1" }}>
+              <div className="panel-heading">
+                <div>
+                  <h2>Monthly Plan</h2>
+                  <p>Your budgets compared with your monthly income</p>
+                </div>
+                <button type="button" className="text-action" onClick={() => setActivePage("profile")}>
+                  {monthlyIncomeSetting > 0 ? "Edit income" : "Set income"}
+                </button>
+              </div>
+              {monthlyIncomeSetting === 0 ? (
+                <p>Set your monthly income in Profile to see how your budgets compare with it.</p>
+              ) : (
+                <>
+                  <div className="history-totals">
+                    <div><span>Monthly income</span><strong>₹{monthlyIncomeSetting.toFixed(2)}</strong></div>
+                    <div><span>Budgeted this month</span><strong>₹{totalBudgetedThisMonth.toFixed(2)}</strong></div>
+                    <div><span>Spent this month</span><strong>₹{currentMonthExpenses.toFixed(2)}</strong></div>
+                  </div>
+                  <div className="budget-track" style={{ marginTop: 14 }}>
+                    <span style={{ width: `${Math.min(budgetedShare, 100)}%`, ...(budgetsExceedIncome ? { background: "#d9534f" } : {}) }} />
+                  </div>
+                  <p style={{ marginTop: 8, fontSize: 12, color: budgetsExceedIncome ? "#c0392b" : "#718279" }}>
+                    {budgetsExceedIncome
+                      ? `Your budgets add up to ₹${totalBudgetedThisMonth.toFixed(2)}, which is more than your monthly income.`
+                      : `You have planned ${budgetedShare.toFixed(0)}% of your monthly income.`}
+                  </p>
+                </>
+              )}
+            </section>
               <section className="dashboard-section overview-panel">
                 <div className="panel-heading">
                   <div>
@@ -1814,7 +1994,7 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
                   <div className="modal-actions"><button type="button" className="secondary-action" onClick={() => setShowTransactionModal(false)}>Cancel</button><button type="submit">Save Income</button></div>
                 </form> : <form onSubmit={handleAddExpense}>
                   <label>Expense title<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Lunch" maxLength={100} required /></label>
-                  <label>Category<select value={category} onChange={(event) => setCategory(event.target.value)} required><option>Food</option><option>Travel</option><option>Shopping</option><option>Education</option><option>Bills</option><option>Health</option><option>Other</option></select></label>
+                  <label>Category<select value={category} onChange={(event) => setCategory(event.target.value)} required><option>Food</option><option>Travel</option><option>Shopping</option><option>Education</option><option>Entertainment</option><option>Bills</option><option>Health</option><option>Other</option></select></label>
                   <label>Amount (₹)<input type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} required /></label>
                   <label>Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} required /></label>
                   <label className="modal-full-field">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add notes" /></label>
@@ -1828,6 +2008,9 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
           {activePage === "budgets" && <>
           <section className="dashboard-section" id="budgets">
             <h2>Create a Monthly Budget</h2>
+                        {monthlyIncomeSetting > 0 && <p style={{ fontSize: 12, color: budgetsExceedIncome ? "#c0392b" : "#718279", marginBottom: 12 }}>
+              Planned ₹{totalBudgetedThisMonth.toFixed(2)} of your ₹{monthlyIncomeSetting.toFixed(2)} monthly income ({budgetedShare.toFixed(0)}%){budgetsExceedIncome ? " — over your income" : ""}.
+            </p>}
             <form onSubmit={handleAddBudget}>
               <label>Category
                 <select value={budgetCategory}
@@ -1836,6 +2019,7 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
                   <option value="Travel">Travel</option>
                   <option value="Shopping">Shopping</option>
                   <option value="Education">Education</option>
+                  <option value="Entertainment">Entertainment</option>
                   <option value="Bills">Bills</option>
                   <option value="Health">Health</option>
                   <option value="Other">Other</option>
@@ -2224,6 +2408,7 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
                     <span className="report-eyebrow">YOUR REPORT LIBRARY</span>
                     <h2>Saved reports</h2>
                     <p>Review key figures here, or expand a report to inspect its transactions.</p>
+                    {!canExport && <p style={{ color: "#8a6d1d", fontSize: 12, marginTop: 6 }}>🔒 PDF and Excel export is a Premium feature. Ask an admin to upgrade your account.</p>}
                   </div>
 
                   <div className="report-library-controls">
@@ -2383,7 +2568,7 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
                               disabled={Boolean(reportDownloading)}
                               onClick={() => downloadPDF(report.id)}
                             >
-                              {pdfBusy ? "Preparing PDF..." : "↓ Download PDF"}
+                              {!canExport ? "🔒 PDF (Premium)" : pdfBusy ? "Preparing PDF..." : "↓ Download PDF"}
                             </button>
                             <button
                               type="button"
@@ -2391,7 +2576,7 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
                               disabled={Boolean(reportDownloading)}
                               onClick={() => downloadExcel(report.id)}
                             >
-                              {excelBusy ? "Preparing Excel..." : "▦ Download Excel"}
+                              {!canExport ? "🔒 Excel (Premium)" : excelBusy ? "Preparing Excel..." : "▦ Download Excel"}
                             </button>
                             <button
                               type="button"
@@ -2411,7 +2596,103 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
               </section>
             </div>
           )}
+          {activePage === "profile" && <>
+            <section className="dashboard-section">
+              <h2>Account details</h2>
+              {profileLoading && <p>Loading profile...</p>}
+                            {profile && <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18 }}>
+                <div aria-hidden="true" style={{ width: 64, height: 64, minWidth: 64, borderRadius: "50%", background: "linear-gradient(135deg, #087f62, #53b994)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800 }}>
+                  {profile.username.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <strong style={{ display: "block", fontSize: 18 }}>{profile.username}</strong>
+                  <span style={{ fontSize: 12, color: "#718279" }}>
+                    {profile.role}{profile.member_since ? ` · Member since ${new Date(profile.member_since).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}` : ""}
+                  </span>
+                </div>
+              </div>}
+              {profile && <div className="history-totals">
+                <div><span>Username</span><strong>{profile.username}</strong></div>
+                <div><span>Email</span><strong>{profile.email || "Not set"}</strong></div>
+                <div><span>Role</span><strong>{profile.role}</strong></div>
+              </div>}
+            </section>
 
+            <section className="dashboard-section">
+              <h2>Financial settings</h2>
+              <form onSubmit={handleSaveProfile}>
+                <label>Monthly income (₹)
+                  <input type="number" min="0" step="0.01"
+                    value={profileIncome}
+                    onChange={(event) => setProfileIncome(event.target.value)} required />
+                </label>
+                <label style={{ flexDirection: "row", alignItems: "center", gap: 10, gridColumn: "1 / -1" }}>
+                  <input type="checkbox" style={{ width: "auto" }}
+                    checked={profileEmailAlerts}
+                    onChange={(event) => setProfileEmailAlerts(event.target.checked)} />
+                  Send me budget alert emails
+                </label>
+                <button type="submit" disabled={profileSaving}>
+                  {profileSaving ? "Saving..." : "Save profile"}
+                </button>
+              </form>
+              {profileError && <p role="alert">{profileError}</p>}
+            </section>
+            
+            <section className="dashboard-section">
+              <h2>Security</h2>
+              {!showPasswordForm ? (
+                <>
+                  <p style={{ fontSize: 13, color: "#718279", marginBottom: 14 }}>
+                    Change your password regularly to keep your account safe.
+                  </p>
+                  <button type="button" onClick={() => { setShowPasswordForm(true); setPasswordError(""); }}>
+                    Change password
+                  </button>
+                </>
+              ) : (
+                <form onSubmit={handleChangePassword}>
+                  <label>Current password
+                    <input type={showPasswords ? "text" : "password"} value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      autoComplete="current-password" required />
+                  </label>
+                  <label>New password
+                    <input type={showPasswords ? "text" : "password"} value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      minLength={8} autoComplete="new-password" required />
+                  </label>
+                  <label>Confirm new password
+                    <input type={showPasswords ? "text" : "password"} value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      minLength={8} autoComplete="new-password" required />
+                  </label>
+                  <label style={{ flexDirection: "row", alignItems: "center", gap: 10, gridColumn: "1 / -1" }}>
+                    <input type="checkbox" style={{ width: "auto" }} checked={showPasswords}
+                      onChange={(event) => setShowPasswords(event.target.checked)} />
+                    Show passwords
+                  </label>
+                  <div style={{ display: "flex", gap: 10, gridColumn: "1 / -1" }}>
+                    <button type="submit" disabled={passwordSaving}>
+                      {passwordSaving ? "Updating..." : "Update password"}
+                    </button>
+                    <button type="button" className="secondary-action"
+                      onClick={() => {
+                        setShowPasswordForm(false);
+                        setCurrentPassword("");
+                        setNewPassword("");
+                        setConfirmPassword("");
+                        setShowPasswords(false);
+                        setPasswordError("");
+                      }}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+              {passwordError && <p role="alert">{passwordError}</p>}
+            </section>
+          </>}
           {message && <p className="status-message" role="status" aria-live="polite">{message}</p>}
           </main>
         </div>

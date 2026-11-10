@@ -9,9 +9,10 @@ BudgetBuddy is a full-stack personal budget planning and expense management plat
 - **Frontend:** React.js, JavaScript, Axios, Vite
 - **Backend:** Python, Django, Django REST Framework
 - **Database:** SQLite
-- **Authentication:** JWT using SimpleJWT
+- **Authentication:** JWT using SimpleJWT, with automatic token refresh
 - **Notifications:** In-app notifications, browser desktop alerts, and email alerts using Django email (SMTP)
 - **Reports:** ReportLab (PDF) and OpenPyXL (Excel)
+- **Testing:** Django test framework with Django REST Framework API tests
 - **Development Tools:** Visual Studio Code, PowerShell, Git, GitHub.
 
 ## Main Modules
@@ -64,6 +65,18 @@ BudgetBuddy is a full-stack personal budget planning and expense management plat
 - Redesigned the Overview page as a quick summary: totals, recent transactions, budget snapshot, savings goals snapshot, and latest alerts. Over-budget categories are shown in red.
 - Improved the layout to use the full screen width and made status messages dismiss automatically.
 
+### Milestone 4 (in progress) – Core Improvements
+
+- **Server-side validation:** the API now rejects zero or negative amounts, invalid budget months and years, invalid savings goal values, and unknown categories, so data stays correct even when requests bypass the forms.
+- **Automatic token refresh:** expired access tokens are renewed silently using the refresh token. If the session cannot be renewed, the user is logged out with a clear message.
+- **Profile management:** a Profile page with account details, an initials avatar, member-since date, monthly income, and an email alerts preference. Turning email alerts off stops budget alert emails, while in-app alerts continue.
+- **Monthly Plan:** the Overview and Budgets pages compare the user's budgets with their monthly income and warn when budgets exceed it.
+- **Change password:** logged-in users can change their password after confirming the current one. New passwords follow Django's password rules.
+- **Premium feature:** PDF and Excel report export is available to Premium and Admin users only. The restriction is enforced by the backend, and Students see a locked button.
+- **Role management:** users are registered as Students. An admin changes roles (Student, Premium User, Admin) in Django Admin.
+- **Categories:** added the Entertainment category.
+- **Automated tests:** 28 backend tests cover savings goals, budget alert emails, notifications, analytics, reports, profile, Premium access, and password change.
+
 ## Project Structure
 
 ```text
@@ -108,6 +121,12 @@ python manage.py runserver
 
 Backend URL: `http://127.0.0.1:8000/`
 
+To manage users and roles, create an admin account and open Django Admin at `http://127.0.0.1:8000/admin/`:
+
+```powershell
+python manage.py createsuperuser
+```
+
 ## How to Run the Frontend
 
 Open a separate terminal in the repository root and run:
@@ -119,6 +138,14 @@ npm run dev
 ```
 
 Frontend URL: `http://localhost:5173/`
+
+## How to Run the Tests
+
+In the `backend` folder, with the virtual environment active:
+
+```powershell
+python manage.py test
+```
 
 ## Environment Configuration
 
@@ -136,6 +163,14 @@ DEFAULT_FROM_EMAIL=your-email@gmail.com
 
 Budget alert emails are sent to the email address registered by the user. For Gmail, use an app password, not your normal account password.
 
+## User Roles
+
+| Role | How it is assigned | Access |
+|---|---|---|
+| Student | Automatically when registering | All core features |
+| Premium User | By an admin in Django Admin | Core features plus PDF and Excel report export |
+| Admin | By a superuser in Django Admin | Premium features plus user management |
+
 ## Authentication Endpoints
 
 | Method | Endpoint | Description |
@@ -143,6 +178,8 @@ Budget alert emails are sent to the email address registered by the user. For Gm
 | POST | `/api/auth/register/` | Register a user |
 | POST | `/api/auth/login/` | Obtain JWT access and refresh tokens |
 | POST | `/api/auth/token/refresh/` | Refresh an access token |
+| GET | `/api/auth/me/` | Current user's identity and role |
+| POST | `/api/auth/change-password/` | Change the logged-in user's password |
 | GET | `/api/auth/protected-test/` | Test authenticated API access |
 
 ## Finance API Endpoints
@@ -158,9 +195,10 @@ All finance endpoints require a valid JWT access token and return only the logge
 | `/api/savings-goals/` and `/api/savings-goals/<id>/` | GET, POST / GET, PUT, PATCH, DELETE | Manage savings goals and milestone notifications |
 | `/api/notifications/` and `/api/notifications/<id>/` | GET, POST / GET, PATCH, DELETE | List, read, and delete notifications |
 | `/api/analytics/` | GET | Monthly income, expenses, balance, and category totals |
+| `/api/profile/` | GET, PATCH | View and update monthly income and email alert preference |
 | `/api/reports/` and `/api/reports/<id>/` | GET, POST / GET, DELETE | Create, list, and delete financial reports |
-| `/api/reports/<id>/pdf/` | GET | Download a report as PDF |
-| `/api/reports/<id>/excel/` | GET | Download a report as Excel |
+| `/api/reports/<id>/pdf/` | GET | Download a report as PDF (Premium and Admin only) |
+| `/api/reports/<id>/excel/` | GET | Download a report as Excel (Premium and Admin only) |
 
 ## Database
 
@@ -180,17 +218,18 @@ The local database file is not included in the repository.
 - Notification system with in-app, desktop, and email budget alerts.
 - Analytics page and financial analytics API.
 - Financial report generation with PDF and Excel export.
+- Profile management, change password, and the monthly plan.
+- Role-based Premium export and role management through Django Admin.
+- Server-side validation, automatic token refresh, and 28 automated backend tests.
 
 **Upcoming – Milestone 4:**
-- Testing and bug fixing.
-- Profile management and role-based features (Admin and Premium).
-- Automatic token refresh and optional OAuth2 login.
-- Analytics dashboard enhancements.
+- End-to-end workflow testing and bug fixing.
 - Application deployment with PostgreSQL.
-- Production configuration and security improvements.
+- Production configuration (environment-based settings, CORS, and SSL) and security improvements.
 
 ## Security
 
 - Never commit `.env` files containing secrets or credentials.
 - Do not commit local database files, virtual environments, or `node_modules`.
 - Keep sensitive configuration out of source control.
+- Role changes are available only to administrators; users cannot choose their own role.

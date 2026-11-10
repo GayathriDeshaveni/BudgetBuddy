@@ -13,10 +13,12 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 # Import permission class to allow only authenticated users
 from rest_framework.permissions import IsAuthenticated
+from accounts.permissions import IsPremiumOrAdmin
 from openpyxl.utils import get_column_letter
 from django.core.mail import send_mail
 import logging
 from datetime import timedelta
+
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +169,10 @@ def send_budget_alert_email(user, alert_message):
 
     Email errors are logged but do not interrupt the budget summary API.
     """
+        # Respect the user's preference: skip the email if they turned it off.
+    profile = Profile.objects.filter(user=user).first()
+    if profile is not None and not profile.email_alerts:
+        return False
     recipient_email = (getattr(user, "email", "") or "").strip()
     if not recipient_email:
         logger.warning(
@@ -212,10 +218,11 @@ from .serializers import (
     SavingsGoalSerializer,
     NotificationSerializer,
     ReportSerializer,
+    ProfileSerializer
 )
 
 # Import Expense, Income, and Budget models
-from .models import Income, Expense, Budget, SavingsGoal, Notification, Report
+from .models import Income, Expense, Budget, SavingsGoal, Notification, Report, Profile
 
 
 # 1. EXPENSE API: Handles listing and creating expenses
@@ -544,7 +551,7 @@ class ReportDetailView(generics.RetrieveDestroyAPIView):
         return Report.objects.filter(user=self.request.user)
 # Generate and download a financial report as PDF
 class ReportPDFView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPremiumOrAdmin]
 
     def get(self, request, pk):
         try:
@@ -719,7 +726,7 @@ class ReportPDFView(APIView):
 
 # Generate and download a professionally formatted Excel report
 class ReportExcelView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsPremiumOrAdmin]
 
     def get(self, request, pk):
         try:
@@ -935,3 +942,14 @@ class ReportExcelView(APIView):
         )
         excel_buffer.close()
         return response
+
+
+# View and update the logged-in user's profile
+class ProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        # Create the profile the first time it is needed.
+        profile, _ = Profile.objects.get_or_create(user=self.request.user)
+        return profile
