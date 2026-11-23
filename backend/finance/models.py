@@ -40,7 +40,8 @@ class Income(models.Model):
 
     # Where the money came from, e.g. Salary
     source = models.CharField(max_length=100)
-
+    # Income category, e.g. Pocket Money or Scholarship
+    category = models.CharField(max_length=50, default="Other")
     # Amount of money received
     amount = models.DecimalField(max_digits=12, decimal_places=2)
 

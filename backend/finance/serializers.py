@@ -17,7 +17,14 @@ ALLOWED_CATEGORIES = [
     "Health",
     "Other",
 ]
-
+# Categories offered for income records.
+INCOME_CATEGORIES = [
+    "Pocket Money",
+    "Scholarship",
+    "Freelance",
+    "Salary",
+    "Other",
+]
 
 # Reusable validation helpers
 # The frontend forms already block bad values, but the API must check them too,
@@ -37,7 +44,14 @@ def check_category(value):
         "Category must be one of: " + ", ".join(ALLOWED_CATEGORIES) + "."
     )
 
-
+def check_income_category(value):
+    # Accept any letter case ("pocket money") and store the standard name.
+    for name in INCOME_CATEGORIES:
+        if str(value).strip().lower() == name.lower():
+            return name
+    raise serializers.ValidationError(
+        "Category must be one of: " + ", ".join(INCOME_CATEGORIES) + "."
+    )
 # Expense Serializer
 # Converts Expense model data into JSON and validates incoming expense data.
 class ExpenseSerializer(serializers.ModelSerializer):
@@ -59,11 +73,11 @@ class ExpenseSerializer(serializers.ModelSerializer):
 class IncomeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Income
-        fields = ["id", "source", "amount", "date", "notes"]
+        fields = ["id", "source", "category", "amount", "date", "notes"]
         read_only_fields = ["id"]
 
-    def validate_amount(self, value):
-        return check_greater_than_zero(value, "Amount must be greater than zero.")
+    def validate_category(self, value):
+        return check_income_category(value)
 
 
 # Budget Serializer

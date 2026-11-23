@@ -122,6 +122,7 @@ function App() {
 
   // Income form
   const [incomeSource, setIncomeSource] = useState("");
+  const [incomeCategory, setIncomeCategory] = useState("Pocket Money");
   const [incomeAmount, setIncomeAmount] = useState("");
   const [incomeDate, setIncomeDate] = useState(new Date().toLocaleDateString("en-CA"));
   const [incomeNotes, setIncomeNotes] = useState("");
@@ -677,11 +678,13 @@ useEffect(() => {
     try {
       await api.post("incomes/", {
         source: incomeSource,
+        category: incomeCategory,
         amount: incomeAmount,
         date: incomeDate,
         notes: incomeNotes,
       });
       setIncomeSource("");
+      setIncomeCategory("Pocket Money");
       setIncomeAmount("");
       setIncomeDate(new Date().toLocaleDateString("en-CA"));
       setIncomeNotes("");
@@ -959,7 +962,7 @@ useEffect(() => {
   const allTransactions = [
     ...incomes.map((item) => ({
       id: `income-${item.id}`, type: "Income", title: item.source,
-      category: "Income", amount: Number(item.amount), date: item.date, notes: item.notes,
+      category: item.category || "Other", amount: Number(item.amount), date: item.date, notes: item.notes,
     })),
     ...expenses.map((item) => ({
       id: `expense-${item.id}`, type: "Expense", title: item.title,
@@ -1067,7 +1070,7 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
   // Source names are grouped without case sensitivity to avoid duplicate labels
   // such as "Salary" and "salary" appearing separately.
   const incomeSourceBreakdown = Object.values(incomes.reduce((groups, item) => {
-    const rawSource = String(item.source || "").trim();
+    const rawSource = String(item.category || "Other").trim();
     const sourceKey = rawSource.toLocaleLowerCase() || "__unspecified__";
 
     if (!groups[sourceKey]) {
@@ -1459,8 +1462,8 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
             <article className="analytics-card" style={{ marginTop: 18 }}>
               <div className="analytics-card-heading" style={{ marginBottom: 16 }}>
                 <div>
-                  <h3>Income by source</h3>
-                  <p>See which sources contribute to your recorded income</p>
+                  <h3>Income by category</h3>
+                  <p>See which categories contribute to your recorded income</p>
                 </div>
                 <span className="analytics-mini-label">INCOME SOURCES</span>
               </div>
@@ -1986,7 +1989,8 @@ const filteredBudgetSpent = filteredBudgetExpenses.reduce(
                 <div className="modal-heading"><div><h2 id="transaction-modal-title">Add a transaction</h2><p>Record money coming in or going out.</p></div><button type="button" className="modal-close" aria-label="Close" onClick={() => setShowTransactionModal(false)}>×</button></div>
                 <div className="transaction-type-switch"><button type="button" className={newTransactionType === "expense" ? "selected" : ""} onClick={() => setNewTransactionType("expense")}>Expense</button><button type="button" className={newTransactionType === "income" ? "selected" : ""} onClick={() => setNewTransactionType("income")}>Income</button></div>
                 {newTransactionType === "income" ? <form onSubmit={handleAddIncome}>
-                  <label>Income source<input value={incomeSource} onChange={(event) => setIncomeSource(event.target.value)} placeholder="e.g. Salary or Scholarship" required /></label>
+                <label>Category<select value={incomeCategory} onChange={(event) => setIncomeCategory(event.target.value)} required><option>Pocket Money</option><option>Scholarship</option><option>Freelance</option><option>Salary</option><option>Other</option></select></label>
+                  <label>Description<input value={incomeSource} onChange={(event) => setIncomeSource(event.target.value)} placeholder="e.g. November scholarship or salary" required /></label>
                   <label>Amount (₹)<input type="number" min="0.01" step="0.01" value={incomeAmount} onChange={(event) => setIncomeAmount(event.target.value)} required /></label>
                   <label>Date<input type="date" value={incomeDate} onChange={(event) => setIncomeDate(event.target.value)} required /></label>
                   <label>Notes (optional)<textarea value={incomeNotes} onChange={(event) => setIncomeNotes(event.target.value)} placeholder="Add notes" /></label>
