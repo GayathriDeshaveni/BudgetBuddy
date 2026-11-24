@@ -76,7 +76,7 @@ BudgetBuddy is a full-stack personal budget planning and expense management plat
 - **Role management:** users are registered as Students. An admin changes roles (Student, Premium User, Admin) in Django Admin.
 - **Categories:** added the Entertainment category.
 - **Automated tests:** 28 backend tests cover savings goals, budget alert emails, notifications, analytics, reports, profile, Premium access, and password change.
-
+- **Income categories:** income records now have a category (Pocket Money, Scholarship, Freelance, Salary, Other), used in the Add Transaction form, the Transactions filter, and the Analytics "Income by category" card. A migration categorized the existing records automatically.
 ## Project Structure
 
 ```text
