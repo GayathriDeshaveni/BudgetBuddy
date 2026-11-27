@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     # Third-party apps.
     "rest_framework",
     "corsheaders",
+    "anymail",
     # Project apps.
     "accounts",
     "finance",
@@ -158,6 +159,12 @@ if RENDER_EXTERNAL_HOSTNAME:
 
 # Gmail SMTP email configuration.
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+
+# API keys for HTTPS email services (used when EMAIL_BACKEND points to anymail).
+ANYMAIL = {
+    "BREVO_API_KEY": os.getenv("BREVO_API_KEY", ""),
+    "SENDGRID_API_KEY": os.getenv("SENDGRID_API_KEY", ""),
+}
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").strip().lower() in {

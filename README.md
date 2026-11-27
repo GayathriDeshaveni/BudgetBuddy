@@ -4,15 +4,23 @@
 
 BudgetBuddy is a full-stack personal budget planning and expense management platform designed to help students manage income, track expenses, plan budgets, and monitor savings goals.
 
+## Live Demo
+
+- **Frontend (Vercel):** https://budget-buddy-nine-nu.vercel.app
+- **Backend API (Render):** https://budgetbuddy-164q.onrender.com
+
+The backend runs on a free Render instance, so the first request after a period of inactivity can take up to a minute while the server wakes up. On the free instance outbound SMTP is blocked, so budget alert emails are written to the server log instead of being sent; in-app and desktop alerts work normally. Email delivery works locally with Gmail SMTP.
+
 ## Technologies Used
 
 - **Frontend:** React.js, JavaScript, Axios, Vite
 - **Backend:** Python, Django, Django REST Framework
-- **Database:** SQLite
+- **Database:** SQLite for local development, PostgreSQL in production
 - **Authentication:** JWT using SimpleJWT, with automatic token refresh
 - **Notifications:** In-app notifications, browser desktop alerts, and email alerts using Django email (SMTP)
 - **Reports:** ReportLab (PDF) and OpenPyXL (Excel)
 - **Testing:** Django test framework with Django REST Framework API tests
+- **Deployment:** Render (backend and PostgreSQL database) and Vercel (frontend)
 - **Development Tools:** Visual Studio Code, PowerShell, Git, GitHub.
 
 ## Main Modules
@@ -74,9 +82,11 @@ BudgetBuddy is a full-stack personal budget planning and expense management plat
 - **Change password:** logged-in users can change their password after confirming the current one. New passwords follow Django's password rules.
 - **Premium feature:** PDF and Excel report export is available to Premium and Admin users only. The restriction is enforced by the backend, and Students see a locked button.
 - **Role management:** users are registered as Students. An admin changes roles (Student, Premium User, Admin) in Django Admin.
-- **Categories:** added the Entertainment category.
-- **Automated tests:** 28 backend tests cover savings goals, budget alert emails, notifications, analytics, reports, profile, Premium access, and password change.
+- **Categories:** added the Entertainment category for expenses and budgets.
 - **Income categories:** income records now have a category (Pocket Money, Scholarship, Freelance, Salary, Other), used in the Add Transaction form, the Transactions filter, and the Analytics "Income by category" card. A migration categorized the existing records automatically.
+- **Deployment:** the backend and a PostgreSQL database run on Render, and the frontend runs on Vercel. All settings that differ between local and production (secret key, debug mode, allowed hosts, CORS, database, HTTPS, email backend and the API address) are read from environment variables.
+- **Automated tests:** 34 backend tests cover savings goals, budget alert emails, notifications, analytics, reports, profile, Premium access, and password change.
+
 ## Project Structure
 
 ```text
@@ -163,6 +173,32 @@ DEFAULT_FROM_EMAIL=your-email@gmail.com
 
 Budget alert emails are sent to the email address registered by the user. For Gmail, use an app password, not your normal account password.
 
+Optional production variables (all have safe defaults for local development):
+
+| Variable | Purpose |
+|---|---|
+| `DJANGO_DEBUG` | `True` for local development, `False` in production |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated host names (the Render host is added automatically) |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated frontend addresses allowed to call the API |
+| `CSRF_TRUSTED_ORIGINS` | Extra trusted origins for the admin site |
+| `DATABASE_URL` | PostgreSQL connection string; when it is not set, SQLite is used |
+| `DJANGO_USE_HTTPS` | `True` in production to enable HTTPS redirect and secure cookies |
+| `EMAIL_BACKEND` | Set to `django.core.mail.backends.console.EmailBackend` where SMTP is blocked |
+
+The frontend reads the API address from `VITE_API_URL` (for example `https://your-backend.onrender.com/api/`).
+
+## Deployment
+
+**Backend and database (Render):** create a PostgreSQL database, then a Python web service with the root directory `backend`.
+
+- Build command: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && (python manage.py createsuperuser --noinput || true)`
+- Start command: `gunicorn config.wsgi:application`
+- Environment variables: `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=False`, `DATABASE_URL`, `DJANGO_USE_HTTPS=True`, `CORS_ALLOWED_ORIGINS`, `EMAIL_BACKEND`, and `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_EMAIL`, `DJANGO_SUPERUSER_PASSWORD` for the first admin account.
+
+**Frontend (Vercel):** import the repository with the root directory `frontend` (Vite) and set `VITE_API_URL` to the backend's `/api/` address.
+
+Roles (Premium User, Admin) are assigned in Django Admin on the backend address under `/admin/`.
+
 ## User Roles
 
 | Role | How it is assigned | Access |
@@ -220,12 +256,11 @@ The local database file is not included in the repository.
 - Financial report generation with PDF and Excel export.
 - Profile management, change password, and the monthly plan.
 - Role-based Premium export and role management through Django Admin.
-- Server-side validation, automatic token refresh, and 28 automated backend tests.
+- Server-side validation, automatic token refresh, and 34 automated backend tests.
+- Income categories, deployment on Render and Vercel with PostgreSQL, and environment-based production configuration.
 
 **Upcoming – Milestone 4:**
 - End-to-end workflow testing and bug fixing.
-- Application deployment with PostgreSQL.
-- Production configuration (environment-based settings, CORS, and SSL) and security improvements.
 
 ## Security
 
